@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>记录本 · 工作生活随手记</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f8fafc;
+            padding: 16px;
+            padding-bottom: 70px;
+            color: #0f172a;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        h1 {
+            font-size: 1.7rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .add-btn {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+        /* 页签 */
+        .tabs {
+            display: flex;
+            gap: 12px;
+            background: white;
+            padding: 6px;
+            border-radius: 60px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            border-radius: 40px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tab.active {
+            background: #3b82f6;
+            color: white;
+        }
+        /* 筛选栏 */
+        .filter-bar {
+            background: white;
+            border-radius: 20px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        .filter-group {
+            flex: 1;
+            min-width: 110px;
+        }
+        .filter-group label {
+            font-size: 0.7rem;
+            color: #475569;
+            display: block;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            background: white;
+            font-size: 0.8rem;
+        }
+        .sort-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .sort-btn {
+            background: #f1f5f9;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .sort-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+        /* 卡片列表 */
+        .list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            transition: 0.1s;
+            border: 1px solid #eef2ff;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .date-cat {
+            display: flex;
+            gap: 8px;
+            font-size: 0.7rem;
+            color: #3b82f6;
+            background: #eff6ff;
+            padding: 4px 10px;
+            border-radius: 40px;
+        }
+        .card-actions button {
+            background: transparent;
+            border: none;
+            font-size: 1.2rem;
+            margin-left: 8px;
+            cursor: pointer;
+        }
+        .record-text {
+            font-size: 1rem;
+            margin: 10px 0 6px;
+            word-break: break-word;
+        }
+        .work-status {
+            font-size: 0.7rem;
+            display: inline-block;
+            background: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 30px;
+        }
+        .empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 40px;
+        }
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-card {
+            background: white;
+            border-radius: 32px;
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        .modal-card h3 {
+            margin-bottom: 16px;
+        }
+        .modal-card input, .modal-card select, .modal-card textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+        }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>📘 记录本</h1>
+    <button class="add-btn" id="openAddBtn">+ 新记录</button>
+</div>
+
+<div class="tabs">
+    <button class="tab active" data-tab="pending">📋 进行中</button>
+    <button class="tab" data-tab="completed">✅ 已完成工作</button>
+</div>
+
+<div class="filter-bar">
+    <div class="filter-group">
+        <label>📅 日期筛选</label>
+        <input type="date" id="filterDate">
+    </div>
+    <div class="filter-group">
+        <label>🏷️ 类别筛选</label>
+        <select id="filterCategory">
+            <option value="">全部</option>
+            <option value="工作">工作</option>
+            <option value="生活">生活</option>
+            <option value="学习">学习</option>
+            <option value="其他">其他</option>
+        </select>
+    </div>
+    <div class="sort-btns">
+        <button class="sort-btn" data-sort="date_asc">📅 日期↑</button>
+        <button class="sort-btn" data-sort="date_desc">📅 日期↓</button>
+        <button class="sort-btn" data-sort="category">🏷️ 类别</button>
+    </div>
+</div>
+
+<div id="listContainer" class="list">加载中...</div>
+
+<!-- 新增/编辑模态框 -->
+<div id="entryModal" class="modal">
+    <div class="modal-card">
+        <h3 id="modalTitle">新增记录</h3>
+        <input type="date" id="entryDate" required>
+        <select id="entryCategory">
+            <option value="工作">工作</option>
+            <option value="生活">生活</option>
+            <option value="学习">学习</option>
+            <option value="其他">其他</option>
+        </select>
+        <textarea id="entryRecord" rows="2" placeholder="记录内容..."></textarea>
+        <div id="workCheckboxWrapper" class="checkbox-row">
+            <input type="checkbox" id="entryCompleted">
+            <label for="entryCompleted">标记为已完成（仅工作类有效）</label>
+        </div>
+        <div class="modal-buttons">
+            <button id="modalCancelBtn" style="background:#e2e8f0;">取消</button>
+            <button id="modalSaveBtn" style="background:#3b82f6; color:white;">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- 数据模型 ----------
+    let items = [];      // 每个条目 { id, date, category, record, completed (仅工作类有意义) }
+    let currentTab = "pending";   // pending / completed
+    let currentFilterDate = "";
+    let currentFilterCategory = "";
+    let currentSort = "date_asc"; // date_asc, date_desc, category
+
+    // DOM 元素
+    const listContainer = document.getElementById("listContainer");
+    const filterDate = document.getElementById("filterDate");
+    const filterCategory = document.getElementById("filterCategory");
+    const sortBtns = document.querySelectorAll(".sort-btn");
+    const tabBtns = document.querySelectorAll(".tab");
+    const openAddBtn = document.getElementById("openAddBtn");
+    const modal = document.getElementById("entryModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const entryDate = document.getElementById("entryDate");
+    const entryCategory = document.getElementById("entryCategory");
+    const entryRecord = document.getElementById("entryRecord");
+    const entryCompleted = document.getElementById("entryCompleted");
+    const modalSaveBtn = document.getElementById("modalSaveBtn");
+    const modalCancelBtn = document.getElementById("modalCancelBtn");
+
+    let editingId = null;   // 编辑模式时的id
+
+    // 存储
+    function saveToLocalStorage() {
+        localStorage.setItem("notebook_items", JSON.stringify(items));
+    }
+
+    function loadFromLocalStorage() {
+        const stored = localStorage.getItem("notebook_items");
+        if (stored) {
+            items = JSON.parse(stored);
+            // 保证每条都有 completed 字段 (非工作类强制 false)
+            items.forEach(i => {
+                if (i.category !== "工作") i.completed = false;
+                if (i.completed === undefined) i.completed = false;
+            });
+        } else {
+            // 演示数据
+            items = [
+                { id: 1, date: "2026-05-20", category: "工作", record: "需求评审会议", completed: true },
+                { id: 2, date: "2026-05-22", category: "工作", record: "撰写周报", completed: false },
+                { id: 3, date: "2026-05-23", category: "生活", record: "买菜", completed: false },
+                { id: 4, date: "2026-05-24", category: "学习", record: "阅读《深入浅出PWA》", completed: false }
+            ];
+            saveToLocalStorage();
+        }
+        render();
+    }
+
+    // 渲染核心
+    function render() {
+        // 1. 根据 tab 过滤：pending = 未完成工作 + 所有非工作； completed = 已完成工作
+        let filtered = items.filter(item => {
+            if (currentTab === "pending") {
+                if (item.category === "工作") return item.completed === false;
+                else return true;
+            } else { // completed
+                return (item.category === "工作" && item.completed === true);
+            }
+        });
+
+        // 2. 日期筛选
+        if (currentFilterDate) {
+            filtered = filtered.filter(item => item.date === currentFilterDate);
+        }
+        // 3. 类别筛选
+        if (currentFilterCategory) {
+            filtered = filtered.filter(item => item.category === currentFilterCategory);
+        }
+
+        // 4. 排序
+        if (currentSort === "date_asc") {
+            filtered.sort((a,b) => a.date.localeCompare(b.date));
+        } else if (currentSort === "date_desc") {
+            filtered.sort((a,b) => b.date.localeCompare(a.date));
+        } else if (currentSort === "category") {
+            filtered.sort((a,b) => a.category.localeCompare(b.category));
+        }
+
+        // 渲染HTML
+        if (filtered.length === 0) {
+            listContainer.innerHTML = `<div class="empty">✨ 空空如也，点击右上角添加 ✨</div>`;
+            return;
+        }
+
+        listContainer.innerHTML = filtered.map(item => {
+            const isWork = item.category === "工作";
+            let statusHtml = "";
+            if (isWork) {
+                statusHtml = `<span class="work-status">${item.completed ? "✓ 已完成" : "○ 未完成"}</span>`;
+            }
+            return `
+                <div class="card" data-id="${item.id}">
+                    <div class="card-header">
+                        <div class="date-cat">
+                            <span>📅 ${item.date}</span>
+                            <span>🏷️ ${item.category}</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="edit-btn" data-id="${item.id}">✏️</button>
+                            <button class="delete-btn" data-id="${item.id}">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="record-text">${escapeHtml(item.record)}</div>
+                    ${statusHtml ? `<div style="margin-top: 6px;">${statusHtml}</div>` : ""}
+                </div>
+            `;
+        }).join("");
+
+        // 绑定编辑删除事件
+        document.querySelectorAll(".edit-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const id = parseInt(btn.dataset.id);
+                openEditModal(id);
+            });
+        });
+        document.querySelectorAll(".delete-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const id = parseInt(btn.dataset.id);
+                if (confirm("确定删除这条记录吗？")) {
+                    deleteItem(id);
+                }
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return "";
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === "&") return "&amp;";
+            if (m === "<") return "&lt;";
+            if (m === ">") return "&gt;";
+            return m;
+        });
+    }
+
+    // 新增/编辑逻辑
+    function openAddModal() {
+        editingId = null;
+        modalTitle.innerText = "新增记录";
+        entryDate.value = new Date().toISOString().slice(0,10);
+        entryCategory.value = "工作";
+        entryRecord.value = "";
+        entryCompleted.checked = false;
+        // 根据初始类别显示/隐藏完成框
+        toggleCompletedCheckbox(entryCategory.value);
+        modal.style.display = "flex";
+    }
+
+    function openEditModal(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+        editingId = id;
+        modalTitle.innerText = "编辑记录";
+        entryDate.value = item.date;
+        entryCategory.value = item.category;
+        entryRecord.value = item.record;
+        entryCompleted.checked = (item.category === "工作" && item.completed) || false;
+        toggleCompletedCheckbox(item.category);
+        modal.style.display = "flex";
+    }
+
+    function toggleCompletedCheckbox(category) {
+        const wrapper = document.getElementById("workCheckboxWrapper");
+        if (category === "工作") {
+            wrapper.style.display = "flex";
+        } else {
+            wrapper.style.display = "none";
+            entryCompleted.checked = false;
+        }
+    }
+
+    function saveEntry() {
+        const date = entryDate.value;
+        const category = entryCategory.value;
+        const record = entryRecord.value.trim();
+        if (!date || !record) {
+            alert("请填写日期和记录内容");
+            return;
+        }
+        const completed = (category === "工作") ? entryCompleted.checked : false;
+
+        if (editingId === null) {
+            // 新增
+            const newId = Date.now();
+            items.push({
+                id: newId,
+                date: date,
+                category: category,
+                record: record,
+                completed: completed
+            });
+        } else {
+            // 编辑
+            const index = items.findIndex(i => i.id === editingId);
+            if (index !== -1) {
+                // 如果类别从工作改为非工作，强制置 completed = false
+                let finalCompleted = completed;
+                if (category !== "工作") finalCompleted = false;
+                items[index] = {
+                    ...items[index],
+                    date: date,
+                    category: category,
+                    record: record,
+                    completed: finalCompleted
+                };
+            }
+        }
+        saveToLocalStorage();
+        closeModal();
+        render();
+    }
+
+    function deleteItem(id) {
+        items = items.filter(i => i.id !== id);
+        saveToLocalStorage();
+        render();
+    }
+
+    function closeModal() {
+        modal.style.display = "none";
+        editingId = null;
+    }
+
+    // 筛选事件
+    function applyFilters() {
+        currentFilterDate = filterDate.value;
+        currentFilterCategory = filterCategory.value;
+        render();
+    }
+
+    function setSort(type) {
+        currentSort = type;
+        // 更新按钮样式
+        sortBtns.forEach(btn => {
+            if (btn.dataset.sort === type) btn.classList.add("active");
+            else btn.classList.remove("active");
+        });
+        render();
+    }
+
+    function setTab(tab) {
+        currentTab = tab;
+        tabBtns.forEach(btn => {
+            if (btn.dataset.tab === tab) btn.classList.add("active");
+            else btn.classList.remove("active");
+        });
+        render();
+    }
+
+    // 监听类别变化显示/隐藏完成复选框
+    entryCategory.addEventListener("change", (e) => {
+        toggleCompletedCheckbox(e.target.value);
+    });
+
+    // 事件绑定
+    openAddBtn.addEventListener("click", openAddModal);
+    modalCancelBtn.addEventListener("click", closeModal);
+    modalSaveBtn.addEventListener("click", saveEntry);
+    filterDate.addEventListener("change", applyFilters);
+    filterCategory.addEventListener("change", applyFilters);
+    sortBtns.forEach(btn => btn.addEventListener("click", () => setSort(btn.dataset.sort)));
+    tabBtns.forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+
+    // 初始化
+    loadFromLocalStorage();
+    setSort("date_asc");
+    setTab("pending");
+    window.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+</script>
+</body>
+</html>
