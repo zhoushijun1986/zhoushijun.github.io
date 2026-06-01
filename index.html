@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>记录本 · 工作生活随手记</title>
+    <title>智能记录本 · 条件字段版</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3b82f6">
     <style>
@@ -153,16 +153,26 @@
             cursor: pointer;
         }
         .record-text {
-            font-size: 1rem;
+            font-size: 0.95rem;
             margin: 10px 0 6px;
             word-break: break-word;
+            white-space: pre-wrap;  /* 保留换行和空格 */
+            line-height: 1.4;
         }
-        .work-status {
-            font-size: 0.7rem;
-            display: inline-block;
-            background: #e2e8f0;
-            padding: 2px 8px;
-            border-radius: 30px;
+        .learn-detail {
+            font-size: 0.75rem;
+            background: #f1f5f9;
+            padding: 6px 10px;
+            border-radius: 16px;
+            margin-top: 6px;
+        }
+        .learn-note {
+            font-size: 0.75rem;
+            color: #dc2626;  /* 红色 */
+            font-weight: 500;
+            margin-top: 4px;
+            padding-left: 8px;
+            border-left: 2px solid #dc2626;
         }
         .empty {
             text-align: center;
@@ -184,8 +194,10 @@
             background: white;
             border-radius: 32px;
             width: 90%;
-            max-width: 400px;
+            max-width: 500px;
             padding: 20px;
+            max-height: 85vh;
+            overflow-y: auto;
         }
         .modal-card h3 {
             margin-bottom: 16px;
@@ -196,6 +208,26 @@
             margin-bottom: 14px;
             border: 1px solid #cbd5e1;
             border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .modal-card textarea {
+            font-family: inherit;
+            resize: vertical;
+        }
+        .dynamic-field {
+            margin-bottom: 14px;
+            transition: all 0.2s;
+        }
+        .dynamic-field label {
+            font-weight: 500;
+            font-size: 0.8rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .red-note {
+            color: #dc2626;
+            font-size: 0.75rem;
+            margin-top: 4px;
         }
         .checkbox-row {
             display: flex;
@@ -211,17 +243,20 @@
         button {
             cursor: pointer;
         }
+        .dynamic-field input {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
 <div class="header">
-    <h1>📘 记录本</h1>
+    <h1>📘 智能记录本</h1>
     <button class="add-btn" id="openAddBtn">+ 新记录</button>
 </div>
 
 <div class="tabs">
     <button class="tab active" data-tab="pending">📋 进行中</button>
-    <button class="tab" data-tab="completed">✅ 已完成工作</button>
+    <button class="tab" data-tab="completed">✅ 已完成学习</button>
 </div>
 
 <div class="filter-bar">
@@ -259,10 +294,24 @@
             <option value="学习">学习</option>
             <option value="其他">其他</option>
         </select>
-        <textarea id="entryRecord" rows="2" placeholder="记录内容..."></textarea>
+        
+        <!-- 动态字段区域：学习内容 -->
+        <div id="studyContentField" class="dynamic-field" style="display:none;">
+            <label>📖 学习内容</label>
+            <input type="text" id="entryStudyContent" placeholder="例如：新东方、网易云课堂...">
+        </div>
+
+        <!-- 动态字段区域：新东方备注（红色） -->
+        <div id="xdfNoteField" class="dynamic-field" style="display:none;">
+            <label style="color:#dc2626;">📝 备注 <span style="color:#dc2626;">(红色重要)</span></label>
+            <input type="text" id="entryXdfNote" placeholder="填写与新东方相关的补充信息">
+            <div class="red-note">* 该备注为红色显示</div>
+        </div>
+
+        <textarea id="entryRecord" rows="3" placeholder="记录内容... (支持换行分段)"></textarea>
         <div id="workCheckboxWrapper" class="checkbox-row">
             <input type="checkbox" id="entryCompleted">
-            <label for="entryCompleted">标记为已完成（仅工作类有效）</label>
+            <label for="entryCompleted">标记为已完成（仅学习类有效）</label>
         </div>
         <div class="modal-buttons">
             <button id="modalCancelBtn" style="background:#e2e8f0;">取消</button>
@@ -273,7 +322,8 @@
 
 <script>
     // ---------- 数据模型 ----------
-    let items = [];      // 每个条目 { id, date, category, record, completed (仅工作类有意义) }
+    let items = [];      // 每个条目 { id, date, category, record, completed, studyContent, xdfNote }
+
     let currentTab = "pending";   // pending / completed
     let currentFilterDate = "";
     let currentFilterCategory = "";
@@ -294,30 +344,73 @@
     const entryCompleted = document.getElementById("entryCompleted");
     const modalSaveBtn = document.getElementById("modalSaveBtn");
     const modalCancelBtn = document.getElementById("modalCancelBtn");
+    
+    // 新增的动态字段
+    const studyContentField = document.getElementById("studyContentField");
+    const entryStudyContent = document.getElementById("entryStudyContent");
+    const xdfNoteField = document.getElementById("xdfNoteField");
+    const entryXdfNote = document.getElementById("entryXdfNote");
+    const workCheckboxWrapper = document.getElementById("workCheckboxWrapper");
 
     let editingId = null;   // 编辑模式时的id
 
+    // 监听类别变化，动态显示学习内容字段
+    function toggleDynamicFields() {
+        const category = entryCategory.value;
+        if (category === "学习") {
+            studyContentField.style.display = "block";
+            // 实时监听学习内容输入，判断是否为新东方
+            checkStudyContentForXdf();
+        } else {
+            studyContentField.style.display = "none";
+            xdfNoteField.style.display = "none";
+            // 清空值
+            entryStudyContent.value = "";
+            entryXdfNote.value = "";
+        }
+    }
+
+    // 监听学习内容输入，判断是否为新东方
+    function checkStudyContentForXdf() {
+        const studyVal = entryStudyContent.value.trim();
+        if (studyVal === "新东方") {
+            xdfNoteField.style.display = "block";
+        } else {
+            xdfNoteField.style.display = "none";
+            entryXdfNote.value = "";
+        }
+    }
+
+    entryCategory.addEventListener("change", toggleDynamicFields);
+    entryStudyContent.addEventListener("input", checkStudyContentForXdf);
+
     // 存储
     function saveToLocalStorage() {
-        localStorage.setItem("notebook_items", JSON.stringify(items));
+        localStorage.setItem("smart_notebook_items", JSON.stringify(items));
     }
 
     function loadFromLocalStorage() {
-        const stored = localStorage.getItem("notebook_items");
+        const stored = localStorage.getItem("smart_notebook_items");
         if (stored) {
             items = JSON.parse(stored);
-            // 保证每条都有 completed 字段 (非工作类强制 false)
+            // 兼容旧数据
             items.forEach(i => {
-                if (i.category !== "工作") i.completed = false;
+                if (i.studyContent === undefined) i.studyContent = "";
+                if (i.xdfNote === undefined) i.xdfNote = "";
+                if (i.category !== "学习") {
+                    i.completed = false;
+                    i.studyContent = "";
+                    i.xdfNote = "";
+                }
                 if (i.completed === undefined) i.completed = false;
             });
         } else {
             // 演示数据
             items = [
-                { id: 1, date: "2026-05-20", category: "工作", record: "需求评审会议", completed: true },
-                { id: 2, date: "2026-05-22", category: "工作", record: "撰写周报", completed: false },
-                { id: 3, date: "2026-05-23", category: "生活", record: "买菜", completed: false },
-                { id: 4, date: "2026-05-24", category: "学习", record: "阅读《深入浅出PWA》", completed: false }
+                { id: 1, date: "2026-05-20", category: "工作", record: "需求评审会议\n确认了API接口方案", completed: false, studyContent: "", xdfNote: "" },
+                { id: 2, date: "2026-05-22", category: "学习", record: "学习英语\n背了50个单词\n做了听力练习", completed: false, studyContent: "新东方", xdfNote: "网课报名成功，6月开课" },
+                { id: 3, date: "2026-05-23", category: "生活", record: "买菜\n鸡蛋、牛奶、蔬菜", completed: false, studyContent: "", xdfNote: "" },
+                { id: 4, date: "2026-05-24", category: "学习", record: "学习React Hooks\n看文档+写demo", completed: true, studyContent: "B站教程", xdfNote: "" }
             ];
             saveToLocalStorage();
         }
@@ -326,13 +419,13 @@
 
     // 渲染核心
     function render() {
-        // 1. 根据 tab 过滤：pending = 未完成工作 + 所有非工作； completed = 已完成工作
+        // 1. 根据 tab 过滤：pending = 未完成学习 + 所有非学习； completed = 已完成学习
         let filtered = items.filter(item => {
             if (currentTab === "pending") {
-                if (item.category === "工作") return item.completed === false;
+                if (item.category === "学习") return item.completed === false;
                 else return true;
-            } else { // completed
-                return (item.category === "工作" && item.completed === true);
+            } else {
+                return (item.category === "学习" && item.completed === true);
             }
         });
 
@@ -361,11 +454,22 @@
         }
 
         listContainer.innerHTML = filtered.map(item => {
-            const isWork = item.category === "工作";
+            const isWork = item.category === "学习";  // 只对学习类显示完成状态和学习详情
             let statusHtml = "";
+            let learnDetailHtml = "";
+            
             if (isWork) {
-                statusHtml = `<span class="work-status">${item.completed ? "✓ 已完成" : "○ 未完成"}</span>`;
+                statusHtml = `<span style="font-size:0.7rem; background:#e2e8f0; padding:2px 8px; border-radius:30px;">${item.completed ? "✓ 已完成" : "○ 未完成"}</span>`;
+                // 展示学习内容和备注
+                if (item.studyContent) {
+                    learnDetailHtml += `<div class="learn-detail">📖 学习内容：${escapeHtml(item.studyContent)}</div>`;
+                }
+                if (item.xdfNote) {
+                    learnDetailHtml += `<div class="learn-note">🔴 备注：${escapeHtml(item.xdfNote)}</div>`;
+                }
             }
+            
+            // 保留分段格式：使用 white-space: pre-wrap
             return `
                 <div class="card" data-id="${item.id}">
                     <div class="card-header">
@@ -378,7 +482,8 @@
                             <button class="delete-btn" data-id="${item.id}">🗑️</button>
                         </div>
                     </div>
-                    <div class="record-text">${escapeHtml(item.record)}</div>
+                    <div class="record-text">${escapeHtml(item.record).replace(/\n/g, '<br>')}</div>
+                    ${learnDetailHtml}
                     ${statusHtml ? `<div style="margin-top: 6px;">${statusHtml}</div>` : ""}
                 </div>
             `;
@@ -419,8 +524,10 @@
         entryCategory.value = "工作";
         entryRecord.value = "";
         entryCompleted.checked = false;
-        // 根据初始类别显示/隐藏完成框
-        toggleCompletedCheckbox(entryCategory.value);
+        entryStudyContent.value = "";
+        entryXdfNote.value = "";
+        toggleDynamicFields();  // 重置显示状态
+        workCheckboxWrapper.style.display = "flex";
         modal.style.display = "flex";
     }
 
@@ -432,19 +539,22 @@
         entryDate.value = item.date;
         entryCategory.value = item.category;
         entryRecord.value = item.record;
-        entryCompleted.checked = (item.category === "工作" && item.completed) || false;
-        toggleCompletedCheckbox(item.category);
-        modal.style.display = "flex";
-    }
-
-    function toggleCompletedCheckbox(category) {
-        const wrapper = document.getElementById("workCheckboxWrapper");
-        if (category === "工作") {
-            wrapper.style.display = "flex";
+        entryCompleted.checked = (item.category === "学习" && item.completed) || false;
+        entryStudyContent.value = item.studyContent || "";
+        entryXdfNote.value = item.xdfNote || "";
+        toggleDynamicFields();
+        // 如果学习内容已经是新东方，手动触发显示备注
+        if (item.category === "学习" && item.studyContent === "新东方") {
+            xdfNoteField.style.display = "block";
+        }
+        // 学习类才显示完成复选框，非学习类隐藏
+        if (item.category === "学习") {
+            workCheckboxWrapper.style.display = "flex";
         } else {
-            wrapper.style.display = "none";
+            workCheckboxWrapper.style.display = "none";
             entryCompleted.checked = false;
         }
+        modal.style.display = "flex";
     }
 
     function saveEntry() {
@@ -455,7 +565,12 @@
             alert("请填写日期和记录内容");
             return;
         }
-        const completed = (category === "工作") ? entryCompleted.checked : false;
+        let completed = (category === "学习") ? entryCompleted.checked : false;
+        let studyContent = (category === "学习") ? entryStudyContent.value.trim() : "";
+        let xdfNote = "";
+        if (category === "学习" && studyContent === "新东方") {
+            xdfNote = entryXdfNote.value.trim();
+        }
 
         if (editingId === null) {
             // 新增
@@ -465,21 +580,30 @@
                 date: date,
                 category: category,
                 record: record,
-                completed: completed
+                completed: completed,
+                studyContent: studyContent,
+                xdfNote: xdfNote
             });
         } else {
             // 编辑
             const index = items.findIndex(i => i.id === editingId);
             if (index !== -1) {
-                // 如果类别从工作改为非工作，强制置 completed = false
                 let finalCompleted = completed;
-                if (category !== "工作") finalCompleted = false;
+                let finalStudy = studyContent;
+                let finalNote = xdfNote;
+                if (category !== "学习") {
+                    finalCompleted = false;
+                    finalStudy = "";
+                    finalNote = "";
+                }
                 items[index] = {
                     ...items[index],
                     date: date,
                     category: category,
                     record: record,
-                    completed: finalCompleted
+                    completed: finalCompleted,
+                    studyContent: finalStudy,
+                    xdfNote: finalNote
                 };
             }
         }
@@ -508,7 +632,6 @@
 
     function setSort(type) {
         currentSort = type;
-        // 更新按钮样式
         sortBtns.forEach(btn => {
             if (btn.dataset.sort === type) btn.classList.add("active");
             else btn.classList.remove("active");
@@ -525,9 +648,16 @@
         render();
     }
 
-    // 监听类别变化显示/隐藏完成复选框
-    entryCategory.addEventListener("change", (e) => {
-        toggleCompletedCheckbox(e.target.value);
+    // 监听类别变化，控制完成复选框显示
+    entryCategory.addEventListener("change", () => {
+        const isStudy = entryCategory.value === "学习";
+        if (isStudy) {
+            workCheckboxWrapper.style.display = "flex";
+        } else {
+            workCheckboxWrapper.style.display = "none";
+            entryCompleted.checked = false;
+        }
+        toggleDynamicFields();
     });
 
     // 事件绑定
