@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>智能记录本 · 完整版</title>
+    <title>智能记录本 · 完善版</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3b82f6">
     <style>
@@ -133,9 +133,9 @@
             border-left: 4px solid #ef4444;
             background: #fff5f5;
         }
-        .card.completed .task-title {
-            text-decoration: line-through;
-            opacity: 0.6;
+        .card.completed {
+            opacity: 0.7;
+            background: #f1f5f9;
         }
         .card-header {
             display: flex;
@@ -199,7 +199,19 @@
             color: #94a3b8;
             padding: 40px;
         }
-        /* 模态框 */
+        .complete-action {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+        .complete-action input {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+        }
+        /* 模态框样式不变 */
         .modal {
             display: none;
             position: fixed;
@@ -378,13 +390,13 @@
 
 <script>
     // ---------- 数据模型 ----------
-    let items = [];      // 每个条目包含 id, date, category, record, completed, important, studyContent, xdfNote, reminderEnabled, reminderTime, reminderMessage, reminderTriggered
+    let items = [];
     let currentTab = "pending";
     let currentFilterDate = "";
     let currentFilterCategory = "";
     let currentFilterContent = "";
     let currentFilterImportant = "";
-    let currentSort = "date_asc";
+    let currentSort = "date_desc";
     let timers = [];
     let pollingInterval = null;
 
@@ -490,7 +502,6 @@
                 if (i.reminderMessage === undefined) i.reminderMessage = "";
                 if (i.reminderTriggered === undefined) i.reminderTriggered = false;
                 if (i.completed === undefined) i.completed = false;
-                // 确保学习类有默认值
                 if (i.category !== "学习") {
                     i.studyContent = "";
                     i.xdfNote = "";
@@ -551,6 +562,8 @@
                 reminderHtml = `<div class="reminder-badge">⏰ 提醒：${timeStr} - ${escapeHtml(item.reminderMessage || "无内容")} ${item.reminderTriggered ? "(已提醒)" : ""}</div>`;
             }
             const titleClass = item.important === "重要" ? "important-text" : "";
+            // 完成操作区域：文字根据当前页签变化
+            const actionText = (currentTab === "pending") ? "标记为完成" : "已完成";
             return `
                 <div class="card ${importantClass} ${completedClass}" data-id="${item.id}">
                     <div class="card-header">
@@ -563,13 +576,13 @@
                     <div class="task-title ${titleClass}">${escapeHtml(item.record).replace(/\n/g, '<br>')}</div>
                     ${learnDetailHtml}
                     ${reminderHtml}
-                    <div style="margin-top:6px;">
-                        <input type="checkbox" class="complete-checkbox" data-id="${item.id}" ${item.completed ? "checked" : ""}> 已完成
+                    <div class="complete-action">
+                        <input type="checkbox" class="complete-checkbox" data-id="${item.id}" ${item.completed ? "checked" : ""}>
+                        <span>${actionText}</span>
                     </div>
                 </div>
             `;
         }).join("");
-        // 绑定编辑删除以及完成复选框事件
         document.querySelectorAll(".edit-btn").forEach(btn => btn.addEventListener("click", (e) => openEditModal(parseInt(btn.dataset.id))));
         document.querySelectorAll(".delete-btn").forEach(btn => btn.addEventListener("click", (e) => { if (confirm("确定删除？")) deleteItem(parseInt(btn.dataset.id)); }));
         document.querySelectorAll(".complete-checkbox").forEach(cb => cb.addEventListener("change", (e) => {
@@ -716,7 +729,6 @@
     tabBtns.forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
     window.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
-    // 初始化
     loadFromLocalStorage();
     setSort("date_desc");
     setTab("pending");
