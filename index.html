@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>智能记录本 · 页面内弹窗版</title>
+    <title>智能记录本 · 完整版</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3b82f6">
     <style>
@@ -35,10 +35,6 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-        }
-        .header-buttons {
-            display: flex;
-            gap: 8px;
         }
         .add-btn {
             background: #3b82f6;
@@ -86,7 +82,7 @@
         }
         .filter-group {
             flex: 1;
-            min-width: 110px;
+            min-width: 100px;
         }
         .filter-group label {
             font-size: 0.7rem;
@@ -131,6 +127,15 @@
             padding: 14px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             border: 1px solid #eef2ff;
+            transition: 0.1s;
+        }
+        .card.important {
+            border-left: 4px solid #ef4444;
+            background: #fff5f5;
+        }
+        .card.completed .task-title {
+            text-decoration: line-through;
+            opacity: 0.6;
         }
         .card-header {
             display: flex;
@@ -154,11 +159,16 @@
             margin-left: 8px;
             cursor: pointer;
         }
-        .record-text {
+        .task-title {
             font-size: 0.95rem;
             margin: 10px 0 6px;
             white-space: pre-wrap;
             line-height: 1.4;
+            font-weight: 500;
+        }
+        .important-text {
+            color: #dc2626;
+            font-weight: 600;
         }
         .reminder-badge {
             display: inline-block;
@@ -189,7 +199,7 @@
             color: #94a3b8;
             padding: 40px;
         }
-        /* 模态框 (新增/编辑) */
+        /* 模态框 */
         .modal {
             display: none;
             position: fixed;
@@ -221,12 +231,12 @@
         .dynamic-field { margin-bottom: 14px; }
         .dynamic-field label { font-weight: 500; font-size: 0.8rem; display: block; margin-bottom: 4px; }
         .red-note { color: #dc2626; font-size: 0.75rem; margin-top: 4px; }
-        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
         .reminder-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
         .modal-buttons { display: flex; gap: 12px; justify-content: flex-end; }
         button { cursor: pointer; }
 
-        /* 提醒弹窗 (页面内) */
+        /* 提醒弹窗 */
         .reminder-popup {
             position: fixed;
             bottom: 20px;
@@ -246,35 +256,11 @@
             align-items: center;
             border-bottom: 1px solid #e2e8f0;
         }
-        .reminder-popup .popup-header h3 {
-            font-size: 1.1rem;
-            color: #b45309;
-        }
-        .reminder-popup .popup-header button {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #94a3b8;
-        }
-        .reminder-popup .popup-body {
-            padding: 16px 20px;
-            font-size: 1rem;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-        .reminder-popup .popup-footer {
-            padding: 8px 20px 16px;
-            text-align: right;
-        }
-        .reminder-popup .popup-footer button {
-            background: #f59e0b;
-            border: none;
-            color: white;
-            padding: 6px 20px;
-            border-radius: 40px;
-            font-size: 0.85rem;
-        }
+        .reminder-popup .popup-header h3 { font-size: 1.1rem; color: #b45309; }
+        .reminder-popup .popup-header button { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; }
+        .reminder-popup .popup-body { padding: 16px 20px; font-size: 1rem; white-space: pre-wrap; }
+        .reminder-popup .popup-footer { padding: 8px 20px 16px; text-align: right; }
+        .reminder-popup .popup-footer button { background: #f59e0b; border: none; color: white; padding: 6px 20px; border-radius: 40px; }
         @keyframes slideUp {
             from { transform: translateY(100%); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -284,14 +270,12 @@
 <body>
 <div class="header">
     <h1>📘 智能记录本</h1>
-    <div class="header-buttons">
-        <button id="openAddBtn" class="add-btn">+ 新记录</button>
-    </div>
+    <button id="openAddBtn" class="add-btn">+ 新记录</button>
 </div>
 
 <div class="tabs">
     <button class="tab active" data-tab="pending">📋 进行中</button>
-    <button class="tab" data-tab="completed">✅ 已完成学习</button>
+    <button class="tab" data-tab="completed">✅ 已完成</button>
 </div>
 
 <div class="filter-bar">
@@ -307,6 +291,18 @@
             <option value="生活">生活</option>
             <option value="学习">学习</option>
             <option value="其他">其他</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>🔍 记录内容模糊查询</label>
+        <input type="text" id="filterContent" placeholder="输入关键词...">
+    </div>
+    <div class="filter-group">
+        <label>⭐ 是否重要</label>
+        <select id="filterImportant">
+            <option value="">全部</option>
+            <option value="重要">重要</option>
+            <option value="一般">一般</option>
         </select>
     </div>
     <div class="sort-btns">
@@ -329,6 +325,14 @@
             <option value="学习">学习</option>
             <option value="其他">其他</option>
         </select>
+
+        <div class="dynamic-field">
+            <label>⭐ 是否重要</label>
+            <select id="entryImportant">
+                <option value="一般">一般</option>
+                <option value="重要">重要</option>
+            </select>
+        </div>
         
         <div id="studyContentField" class="dynamic-field" style="display:none;">
             <label>📖 学习内容</label>
@@ -360,10 +364,11 @@
             </div>
         </div>
 
-        <div id="workCheckboxWrapper" class="checkbox-row">
+        <div class="checkbox-row">
             <input type="checkbox" id="entryCompleted">
-            <label for="entryCompleted">标记为已完成（仅学习类有效）</label>
+            <label for="entryCompleted">标记为已完成</label>
         </div>
+
         <div class="modal-buttons">
             <button id="modalCancelBtn" style="background:#e2e8f0;">取消</button>
             <button id="modalSaveBtn" style="background:#3b82f6; color:white;">保存</button>
@@ -373,10 +378,12 @@
 
 <script>
     // ---------- 数据模型 ----------
-    let items = [];
+    let items = [];      // 每个条目包含 id, date, category, record, completed, important, studyContent, xdfNote, reminderEnabled, reminderTime, reminderMessage, reminderTriggered
     let currentTab = "pending";
     let currentFilterDate = "";
     let currentFilterCategory = "";
+    let currentFilterContent = "";
+    let currentFilterImportant = "";
     let currentSort = "date_asc";
     let timers = [];
     let pollingInterval = null;
@@ -385,6 +392,8 @@
     const listContainer = document.getElementById("listContainer");
     const filterDate = document.getElementById("filterDate");
     const filterCategory = document.getElementById("filterCategory");
+    const filterContent = document.getElementById("filterContent");
+    const filterImportant = document.getElementById("filterImportant");
     const sortBtns = document.querySelectorAll(".sort-btn");
     const tabBtns = document.querySelectorAll(".tab");
     const openAddBtn = document.getElementById("openAddBtn");
@@ -392,6 +401,7 @@
     const modalTitle = document.getElementById("modalTitle");
     const entryDate = document.getElementById("entryDate");
     const entryCategory = document.getElementById("entryCategory");
+    const entryImportant = document.getElementById("entryImportant");
     const entryRecord = document.getElementById("entryRecord");
     const entryCompleted = document.getElementById("entryCompleted");
     const entryReminderEnabled = document.getElementById("entryReminderEnabled");
@@ -404,41 +414,26 @@
     const entryStudyContent = document.getElementById("entryStudyContent");
     const xdfNoteField = document.getElementById("xdfNoteField");
     const entryXdfNote = document.getElementById("entryXdfNote");
-    const workCheckboxWrapper = document.getElementById("workCheckboxWrapper");
 
     let editingId = null;
 
-    // ---------- 页面内弹窗提醒 ----------
-    function showReminderPopup(message, onClose) {
-        // 移除已有的弹窗
-        const existingPopup = document.querySelector('.reminder-popup');
-        if (existingPopup) existingPopup.remove();
-        
+    // 页面内弹窗
+    function showReminderPopup(message) {
+        const existing = document.querySelector('.reminder-popup');
+        if (existing) existing.remove();
         const popup = document.createElement('div');
         popup.className = 'reminder-popup';
         popup.innerHTML = `
-            <div class="popup-header">
-                <h3>⏰ 提醒</h3>
-                <button class="close-popup">&times;</button>
-            </div>
+            <div class="popup-header"><h3>⏰ 提醒</h3><button class="close-popup">&times;</button></div>
             <div class="popup-body">${escapeHtml(message)}</div>
-            <div class="popup-footer">
-                <button class="confirm-reminder">知道了</button>
-            </div>
+            <div class="popup-footer"><button class="confirm-reminder">知道了</button></div>
         `;
         document.body.appendChild(popup);
-        
-        const closeBtn = popup.querySelector('.close-popup');
-        const confirmBtn = popup.querySelector('.confirm-reminder');
-        const closeFunc = () => {
-            popup.remove();
-            if (onClose) onClose();
-        };
-        closeBtn.addEventListener('click', closeFunc);
-        confirmBtn.addEventListener('click', closeFunc);
+        const close = () => popup.remove();
+        popup.querySelector('.close-popup').addEventListener('click', close);
+        popup.querySelector('.confirm-reminder').addEventListener('click', close);
     }
 
-    // 检查并触发到期的提醒（页面可见时）
     function checkAndTriggerReminders() {
         const now = new Date();
         let triggered = false;
@@ -449,61 +444,32 @@
             let reminderDate = new Date(item.reminderTime.replace(" ", "T") + ":00");
             if (isNaN(reminderDate.getTime())) return;
             if (reminderDate <= now) {
-                // 提醒时间已到，触发弹窗
-                const message = item.reminderMessage || "您有一条待办提醒";
-                showReminderPopup(message, () => {
-                    // 可选：标记已提醒后刷新列表
-                });
+                showReminderPopup(item.reminderMessage || "您有一条待办提醒");
                 item.reminderTriggered = true;
                 triggered = true;
             }
         });
-        if (triggered) {
-            saveToLocalStorage(); // 保存触发状态
-            render(); // 刷新列表显示已提醒标识
-        }
+        if (triggered) { saveToLocalStorage(); render(); }
     }
 
-    // 设置定时器（到点触发提醒）
     function scheduleReminder(item) {
-        if (item.reminderEnabled !== "yes") return;
-        if (item.reminderTriggered) return;
-        if (!item.reminderTime) return;
+        if (item.reminderEnabled !== "yes" || item.reminderTriggered || !item.reminderTime) return;
         let reminderDate = new Date(item.reminderTime.replace(" ", "T") + ":00");
         if (isNaN(reminderDate.getTime())) return;
         const now = new Date();
         if (reminderDate <= now) return;
         const delay = reminderDate.getTime() - now.getTime();
-        const timerId = setTimeout(() => {
-            checkAndTriggerReminders(); // 集中处理所有到期的
-        }, delay);
+        const timerId = setTimeout(() => checkAndTriggerReminders(), delay);
         timers.push(timerId);
     }
 
-    function clearAllTimers() {
-        timers.forEach(timer => clearTimeout(timer));
-        timers = [];
-    }
-
-    function reloadAllReminders() {
-        clearAllTimers();
-        items.forEach(item => scheduleReminder(item));
-    }
-
-    // 轮询（每30秒检查一次，确保页面可见时不会错过）
+    function clearAllTimers() { timers.forEach(t => clearTimeout(t)); timers = []; }
+    function reloadAllReminders() { clearAllTimers(); items.forEach(item => scheduleReminder(item)); }
     function startPolling() {
         if (pollingInterval) clearInterval(pollingInterval);
-        pollingInterval = setInterval(() => {
-            checkAndTriggerReminders();
-        }, 30000);
+        pollingInterval = setInterval(() => checkAndTriggerReminders(), 30000);
     }
-
-    // 页面可见性变化时立即检查一次（当用户切回页面时）
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-            checkAndTriggerReminders();
-        }
-    });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkAndTriggerReminders(); });
 
     // 存储
     function saveToLocalStorage() {
@@ -518,64 +484,64 @@
             items.forEach(i => {
                 if (i.studyContent === undefined) i.studyContent = "";
                 if (i.xdfNote === undefined) i.xdfNote = "";
+                if (i.important === undefined) i.important = "一般";
                 if (i.reminderEnabled === undefined) i.reminderEnabled = "no";
                 if (i.reminderTime === undefined) i.reminderTime = "";
                 if (i.reminderMessage === undefined) i.reminderMessage = "";
                 if (i.reminderTriggered === undefined) i.reminderTriggered = false;
+                if (i.completed === undefined) i.completed = false;
+                // 确保学习类有默认值
                 if (i.category !== "学习") {
-                    i.completed = false;
                     i.studyContent = "";
                     i.xdfNote = "";
                 }
-                if (i.completed === undefined) i.completed = false;
             });
         } else {
-            // 示例数据
             const now = new Date();
-            const testTime = new Date(now.getTime() + 120000); // 2分钟后
+            const testTime = new Date(now.getTime() + 120000);
             const testTimeStr = `${testTime.getFullYear()}-${String(testTime.getMonth()+1).padStart(2,'0')}-${String(testTime.getDate()).padStart(2,'0')} ${String(testTime.getHours()).padStart(2,'0')}:${String(testTime.getMinutes()).padStart(2,'0')}`;
             items = [
-                { id: 1, date: "2026-06-02", category: "工作", record: "需求评审会议\n确认了API接口方案", completed: false, studyContent: "", xdfNote: "", reminderEnabled: "yes", reminderTime: testTimeStr, reminderMessage: "测试提醒：2分钟后", reminderTriggered: false },
-                { id: 2, date: "2026-06-02", category: "学习", record: "学习英语\n背了50个单词", completed: false, studyContent: "新东方", xdfNote: "网课报名成功", reminderEnabled: "no", reminderTime: "", reminderMessage: "", reminderTriggered: false }
+                { id: Date.now(), date: new Date().toISOString().slice(0,10), category: "工作", record: "去大明宏信拷贝数据", completed: false, important: "重要", studyContent: "", xdfNote: "", reminderEnabled: "yes", reminderTime: testTimeStr, reminderMessage: "拿移动硬盘", reminderTriggered: false },
+                { id: Date.now()+1, date: "2026-06-01", category: "生活", record: "给儿子买男孩类书籍", completed: false, important: "一般", studyContent: "", xdfNote: "", reminderEnabled: "no", reminderTime: "", reminderMessage: "", reminderTriggered: false },
+                { id: Date.now()+2, date: "2026-06-01", category: "学习", record: "作业：\n1. 指读\n2. 记背单词", completed: false, important: "重要", studyContent: "新东方", xdfNote: "完成打卡", reminderEnabled: "no", reminderTime: "", reminderMessage: "", reminderTriggered: false }
             ];
             saveToLocalStorage();
         }
         render();
         reloadAllReminders();
-        // 启动后立即检查一次是否有过去未提醒的（例如页面刷新时）
         setTimeout(() => checkAndTriggerReminders(), 1000);
     }
 
-    // 渲染列表
     function escapeHtml(str) { if (!str) return ""; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
     function render() {
         let filtered = items.filter(item => {
-            if (currentTab === "pending") {
-                if (item.category === "学习") return !item.completed;
-                else return true;
-            } else {
-                return (item.category === "学习" && item.completed);
-            }
+            if (currentTab === "pending") return !item.completed;
+            else return item.completed;
         });
         if (currentFilterDate) filtered = filtered.filter(item => item.date === currentFilterDate);
         if (currentFilterCategory) filtered = filtered.filter(item => item.category === currentFilterCategory);
+        if (currentFilterContent) {
+            const kw = currentFilterContent.toLowerCase();
+            filtered = filtered.filter(item => item.record.toLowerCase().includes(kw));
+        }
+        if (currentFilterImportant) filtered = filtered.filter(item => item.important === currentFilterImportant);
         if (currentSort === "date_asc") filtered.sort((a,b) => a.date.localeCompare(b.date));
         else if (currentSort === "date_desc") filtered.sort((a,b) => b.date.localeCompare(a.date));
         else if (currentSort === "category") filtered.sort((a,b) => a.category.localeCompare(b.category));
 
         if (filtered.length === 0) {
-            listContainer.innerHTML = `<div class="empty">✨ 空空如也，点击右上角添加 ✨</div>`;
+            listContainer.innerHTML = `<div class="empty">✨ 暂无记录，点击右上角添加 ✨</div>`;
             return;
         }
         listContainer.innerHTML = filtered.map(item => {
             const isStudy = item.category === "学习";
-            let statusHtml = "";
             let learnDetailHtml = "";
             let reminderHtml = "";
-            if (isStudy) {
-                statusHtml = `<span style="font-size:0.7rem; background:#e2e8f0; padding:2px 8px; border-radius:30px;">${item.completed ? "✓ 已完成" : "○ 未完成"}</span>`;
-                if (item.studyContent) learnDetailHtml += `<div class="learn-detail">📖 学习内容：${escapeHtml(item.studyContent)}</div>`;
+            let importantClass = item.important === "重要" ? "important" : "";
+            let completedClass = item.completed ? "completed" : "";
+            if (isStudy && item.studyContent) {
+                learnDetailHtml += `<div class="learn-detail">📖 学习内容：${escapeHtml(item.studyContent)}</div>`;
                 if (item.xdfNote) learnDetailHtml += `<div class="learn-note">🔴 备注：${escapeHtml(item.xdfNote)}</div>`;
             }
             if (item.reminderEnabled === "yes" && item.reminderTime) {
@@ -584,8 +550,9 @@
                 const timeStr = `${remindDate.getFullYear()}-${remindDate.getMonth()+1}-${remindDate.getDate()} ${remindDate.getHours()}:${remindDate.getMinutes().toString().padStart(2,'0')}`;
                 reminderHtml = `<div class="reminder-badge">⏰ 提醒：${timeStr} - ${escapeHtml(item.reminderMessage || "无内容")} ${item.reminderTriggered ? "(已提醒)" : ""}</div>`;
             }
+            const titleClass = item.important === "重要" ? "important-text" : "";
             return `
-                <div class="card" data-id="${item.id}">
+                <div class="card ${importantClass} ${completedClass}" data-id="${item.id}">
                     <div class="card-header">
                         <div class="date-cat"><span>📅 ${item.date}</span><span>🏷️ ${item.category}</span></div>
                         <div class="card-actions">
@@ -593,23 +560,31 @@
                             <button class="delete-btn" data-id="${item.id}">🗑️</button>
                         </div>
                     </div>
-                    <div class="record-text">${escapeHtml(item.record).replace(/\n/g, '<br>')}</div>
+                    <div class="task-title ${titleClass}">${escapeHtml(item.record).replace(/\n/g, '<br>')}</div>
                     ${learnDetailHtml}
                     ${reminderHtml}
-                    <div style="margin-top:6px;">${statusHtml}</div>
+                    <div style="margin-top:6px;">
+                        <input type="checkbox" class="complete-checkbox" data-id="${item.id}" ${item.completed ? "checked" : ""}> 已完成
+                    </div>
                 </div>
             `;
         }).join("");
+        // 绑定编辑删除以及完成复选框事件
         document.querySelectorAll(".edit-btn").forEach(btn => btn.addEventListener("click", (e) => openEditModal(parseInt(btn.dataset.id))));
         document.querySelectorAll(".delete-btn").forEach(btn => btn.addEventListener("click", (e) => { if (confirm("确定删除？")) deleteItem(parseInt(btn.dataset.id)); }));
+        document.querySelectorAll(".complete-checkbox").forEach(cb => cb.addEventListener("change", (e) => {
+            const id = parseInt(cb.dataset.id);
+            const item = items.find(i => i.id === id);
+            if (item) { item.completed = cb.checked; saveToLocalStorage(); render(); }
+        }));
     }
 
-    // 增删改查函数
     function openAddModal() {
         editingId = null;
         modalTitle.innerText = "新增记录";
         entryDate.value = new Date().toISOString().slice(0,10);
         entryCategory.value = "工作";
+        entryImportant.value = "一般";
         entryRecord.value = "";
         entryCompleted.checked = false;
         entryStudyContent.value = "";
@@ -619,7 +594,6 @@
         entryReminderMessage.value = "";
         toggleReminderFields();
         toggleDynamicFields();
-        workCheckboxWrapper.style.display = "flex";
         modal.style.display = "flex";
     }
 
@@ -630,8 +604,9 @@
         modalTitle.innerText = "编辑记录";
         entryDate.value = item.date;
         entryCategory.value = item.category;
+        entryImportant.value = item.important;
         entryRecord.value = item.record;
-        entryCompleted.checked = (item.category === "学习" && item.completed) || false;
+        entryCompleted.checked = item.completed;
         entryStudyContent.value = item.studyContent || "";
         entryXdfNote.value = item.xdfNote || "";
         entryReminderEnabled.value = item.reminderEnabled || "no";
@@ -643,16 +618,16 @@
         toggleReminderFields();
         toggleDynamicFields();
         if (item.category === "学习" && item.studyContent === "新东方") xdfNoteField.style.display = "block";
-        workCheckboxWrapper.style.display = (item.category === "学习") ? "flex" : "none";
         modal.style.display = "flex";
     }
 
     function saveEntry() {
         const date = entryDate.value;
         const category = entryCategory.value;
+        const important = entryImportant.value;
         const record = entryRecord.value.trim();
         if (!date || !record) { alert("请填写日期和记录内容"); return; }
-        let completed = (category === "学习") ? entryCompleted.checked : false;
+        let completed = entryCompleted.checked;
         let studyContent = (category === "学习") ? entryStudyContent.value.trim() : "";
         let xdfNote = "";
         if (category === "学习" && studyContent === "新东方") xdfNote = entryXdfNote.value.trim();
@@ -668,7 +643,7 @@
         if (editingId === null) {
             items.push({
                 id: Date.now(),
-                date, category, record, completed,
+                date, category, important, record, completed,
                 studyContent, xdfNote,
                 reminderEnabled, reminderTime, reminderMessage,
                 reminderTriggered: false
@@ -676,14 +651,10 @@
         } else {
             const index = items.findIndex(i => i.id === editingId);
             if (index !== -1) {
-                let finalCompleted = completed;
-                let finalStudy = studyContent;
-                let finalNote = xdfNote;
-                if (category !== "学习") { finalCompleted = false; finalStudy = ""; finalNote = ""; }
                 items[index] = {
                     ...items[index],
-                    date, category, record, completed: finalCompleted,
-                    studyContent: finalStudy, xdfNote: finalNote,
+                    date, category, important, record, completed,
+                    studyContent, xdfNote,
                     reminderEnabled, reminderTime, reminderMessage,
                     reminderTriggered: false
                 };
@@ -720,16 +691,17 @@
         else { xdfNoteField.style.display = "none"; entryXdfNote.value = ""; }
     }
 
-    entryCategory.addEventListener("change", () => {
-        const isStudy = entryCategory.value === "学习";
-        workCheckboxWrapper.style.display = isStudy ? "flex" : "none";
-        if (!isStudy) entryCompleted.checked = false;
-        toggleDynamicFields();
-    });
+    entryCategory.addEventListener("change", toggleDynamicFields);
     entryStudyContent.addEventListener("input", checkStudyContentForXdf);
     entryReminderEnabled.addEventListener("change", toggleReminderFields);
 
-    function applyFilters() { currentFilterDate = filterDate.value; currentFilterCategory = filterCategory.value; render(); }
+    function applyFilters() {
+        currentFilterDate = filterDate.value;
+        currentFilterCategory = filterCategory.value;
+        currentFilterContent = filterContent.value;
+        currentFilterImportant = filterImportant.value;
+        render();
+    }
     function setSort(type) { currentSort = type; sortBtns.forEach(btn => { if (btn.dataset.sort === type) btn.classList.add("active"); else btn.classList.remove("active"); }); render(); }
     function setTab(tab) { currentTab = tab; tabBtns.forEach(btn => { if (btn.dataset.tab === tab) btn.classList.add("active"); else btn.classList.remove("active"); }); render(); }
 
@@ -738,13 +710,15 @@
     modalSaveBtn.addEventListener("click", saveEntry);
     filterDate.addEventListener("change", applyFilters);
     filterCategory.addEventListener("change", applyFilters);
+    filterContent.addEventListener("input", applyFilters);
+    filterImportant.addEventListener("change", applyFilters);
     sortBtns.forEach(btn => btn.addEventListener("click", () => setSort(btn.dataset.sort)));
     tabBtns.forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
     window.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
     // 初始化
     loadFromLocalStorage();
-    setSort("date_asc");
+    setSort("date_desc");
     setTab("pending");
     startPolling();
     window.addEventListener("beforeunload", () => { if (pollingInterval) clearInterval(pollingInterval); clearAllTimers(); });
